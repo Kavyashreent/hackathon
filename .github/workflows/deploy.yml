@@ -1,6 +1,5 @@
 name: Docker Build & Deploy to EKS
 
-# Trigger on push to main branch
 on:
   push:
     branches:
@@ -11,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo
-      - name: Checkout code
+      # 1️⃣ Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
       # 2️⃣ Configure AWS credentials
@@ -20,34 +19,36 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       # 3️⃣ Login to Amazon ECR
       - name: Login to Amazon ECR
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
         run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
-          | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY }}
+          echo "Logging in to AWS ECR..."
+          aws ecr get-login-password --region $AWS_REGION \
+            | docker login --username AWS --password-stdin $ECR_REPOSITORY
 
       # 4️⃣ Build Docker image
       - name: Build Docker image
-        run: |
-          docker build -t patient-service:latest .
+        run: docker build -t patient-service:latest .
 
       # 5️⃣ Tag Docker image
       - name: Tag Docker image
-        run: |
-          docker tag patient-service:latest ${{ secrets.ECR_REPOSITORY }}:latest
+        run: docker tag patient-service:latest ${{ secrets.ECR_REPOSITORY }}:latest
 
       # 6️⃣ Push Docker image to ECR
       - name: Push Docker image
-        run: |
-          docker push ${{ secrets.ECR_REPOSITORY }}:latest
+        run: docker push ${{ secrets.ECR_REPOSITORY }}:latest
 
       # 7️⃣ Update kubeconfig for EKS
       - name: Update kubeconfig
         run: |
           aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name demo-eks
+
       # 8️⃣ Deploy to EKS
       - name: Deploy to EKS
         run: |
