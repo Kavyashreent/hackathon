@@ -11,7 +11,7 @@ jobs:
 
     steps:
       # 1️⃣ Checkout code
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       # 2️⃣ Configure AWS credentials
@@ -22,38 +22,33 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 3️⃣ Explicitly set Docker to use ECR
+      # 3️⃣ Login to AWS ECR
       - name: Login to AWS ECR
-        env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          # Replace with your full ECR URI
-          ECR_URI=333813598365.dkr.ecr.us-east-1.amazonaws.com/demo-app-repo
-
           echo "Logging in to AWS ECR..."
-          aws ecr get-login-password --region $AWS_REGION \
-            | docker login --username AWS --password-stdin 333813598365.dkr.ecr.us-east-1.amazonaws.com/demo-app-repo
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
+            | docker login --username AWS --password-stdin 333813598365.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/demo-app-repo
 
       # 4️⃣ Build Docker image
       - name: Build Docker image
         env:
           GITHUB_SHA: ${{ github.sha }}
         run: |
-          ECR_URI=333813598365.dkr.ecr.us-east-1.amazonaws.com/demo-app-repo
+          ECR_URI=333813598365.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/demo-app-repo
           IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)
           docker build -t patient-service:$IMAGE_TAG .
           docker tag patient-service:$IMAGE_TAG $ECR_URI:$IMAGE_TAG
           docker tag patient-service:$IMAGE_TAG $ECR_URI:latest
 
-      # 5️⃣ Push Docker image
+      # 5️⃣ Push Docker image to ECR
       - name: Push Docker image
         env:
           GITHUB_SHA: ${{ github.sha }}
         run: |
-          ECR_URI=333813598365.dkr.ecr.us-east-1.amazonaws.com/demo-app-repo
+          ECR_URI=333813598365.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/demo-app-repo
           IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)
-          docker push 333813598365.dkr.ecr.us-east-1.amazonaws.com/demo-app-repo:$IMAGE_TAG
-          docker push 333813598365.dkr.ecr.us-east-1.amazonaws.com/demo-app-repo:latest
+          docker push $ECR_URI:$IMAGE_TAG
+          docker push $ECR_URI:latest
 
       # 6️⃣ Update kubeconfig for EKS
       - name: Update kubeconfig
@@ -62,8 +57,14 @@ jobs:
 
       # 7️⃣ Deploy to EKS
       - name: Deploy to EKS
+        env:
+          GITHUB_SHA: ${{ github.sha }}
         run: |
+          ECR_URI=333813598365.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/demo-app-repo
           IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)
-          ECR_URI=333813598365.dkr.ecr.us-east-1.amazonaws.com/demo-app-repo
+          # Update Deployment image
           kubectl set image deployment/patient-service patient-service=$ECR_URI:$IMAGE_TAG --record
+          # Apply service if not already present
           kubectl apply -f service.yaml
+          # Optional: rollout status check
+          kubectl rollout status deployment/patient-service
