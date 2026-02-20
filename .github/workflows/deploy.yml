@@ -32,7 +32,7 @@ jobs:
 
           echo "Logging in to AWS ECR..."
           aws ecr get-login-password --region $AWS_REGION \
-            | docker login --username AWS --password-stdin $ECR_URI
+            | docker login --username AWS --password-stdin 333813598365.dkr.ecr.us-east-1.amazonaws.com/demo-app-repo
 
       # 4️⃣ Build Docker image
       - name: Build Docker image
@@ -52,8 +52,8 @@ jobs:
         run: |
           ECR_URI=333813598365.dkr.ecr.us-east-1.amazonaws.com/demo-app-repo
           IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)
-          docker push $ECR_URI:$IMAGE_TAG
-          docker push $ECR_URI:latest
+          docker push 333813598365.dkr.ecr.us-east-1.amazonaws.com/demo-app-repo:$IMAGE_TAG
+          docker push 333813598365.dkr.ecr.us-east-1.amazonaws.com/demo-app-repo:latest
 
       # 6️⃣ Update kubeconfig for EKS
       - name: Update kubeconfig
