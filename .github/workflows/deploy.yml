@@ -23,12 +23,12 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       # 3️⃣ Login to Amazon ECR
-      - name: Login to ECR
+      - name: Login to Amazon ECR
         env:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
         run: |
-          echo "Logging in to ECR..."
+          echo "Logging in to AWS ECR..."
           aws ecr get-login-password --region $AWS_REGION \
             | docker login --username AWS --password-stdin $ECR_REPOSITORY
       # 4️⃣ Build Docker image
